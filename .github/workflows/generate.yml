@@ -1,9 +1,8 @@
 name: Build and Release Cargo Project
 
 on:
-  push:
-    branches:
-      - master
+  schedule:
+    - cron: "0 */3 * * *"
 
 jobs:
   build_and_release:
