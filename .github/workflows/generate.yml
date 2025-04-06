@@ -1,0 +1,106 @@
+name: Build and Release Cargo Project
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build_and_release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get install -y jq
+
+      - name: Install GitHub CLI
+        run: |
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install -y gh
+
+      - name: Authenticate GitHub CLI
+        run: gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Build Cargo project
+        run: cargo build --release
+
+      - name: Get last release date
+        id: get_last_release
+        run: |
+          # Get latest release date or use default if none exist
+          release_json=$(gh release list --json publishedAt)
+          last_release_date=$(echo "$release_json" | jq -r 'first(.[].publishedAt) // empty')
+          if [ -z "$last_release_date" ]; then
+            last_release_date="Fri, 4 Apr 2025 1:00:00 +0000"
+          else
+            last_release_date=$(date -d "$last_release_date" '+%a, %-d %b %Y %H:%M:%S %z')
+          fi
+          echo "last_release_date=${last_release_date}" >> $GITHUB_ENV
+
+      - name: Run binary and check release need
+        id: run_binary
+        run: |
+          ./target/release/rust-dump "${{ env.last_release_date }}"
+          exit_code=$?
+
+          if [ $exit_code -eq 0 ]; then
+            tar -cf - categories keywords dump | zstd -o data.tar.zst
+          fi
+
+          # Check if artifact exists when release is needed
+          if [ $exit_code -eq 0 ] && [ ! -f ./data.tar.zst ]; then
+            echo "Error: data.tar.zst artifact not found!"
+            exit 1
+          fi
+
+          if [ $exit_code -eq 0 ]; then
+            echo "greater=1" >> $GITHUB_ENV
+          else
+            echo "greater=0" >> $GITHUB_ENV
+          fi
+
+      - name: Set release title
+        if: env.greater == 1
+        id: set_release_title
+        run: |
+          release_title=$(cat ./last_updated)
+          echo "release_title=${release_title}" >> $GITHUB_ENV
+
+      - name: Get short SHA
+        if: env.greater == 1
+        id: sha
+        run: echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_OUTPUT
+
+      - name: Create release
+        if: env.greater == 1
+        uses: ncipollo/release-action@v1
+        with:
+          tag: release-${{ steps.sha.outputs.short_sha }}
+          name: ${{ env.release_title }}
+          artifacts: |
+            ./data.tar.zst
+
+      - name: Delete oldest release (if ≥2 releases)
+        if: env.greater == 1
+        run: |
+          # Get all releases and count them
+          releases_json=$(gh release list --json name,createdAt)
+          release_count=$(echo "$releases_json" | jq 'length')
+
+          # Only delete if there are 2 or more releases
+          if [ $release_count -ge 2 ]; then
+            oldest_release=$(echo "$releases_json" | jq -r 'sort_by(.createdAt) | first(.[]?) | .name')
+            echo "Deleting oldest release: $oldest_release"
+            gh release delete "$oldest_release" --yes
+          else
+            echo "Not enough releases to delete (current: $release_count)"
+          fi

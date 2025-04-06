@@ -1,0 +1,11 @@
+[package]
+name = "rust-dump"
+version = "1.0.0"
+edition = "2024"
+
+[dependencies]
+db-dump = "0.7.12"
+reqwest = "0.12.15"
+tokio = { version = "1", features = ["full"] }
+chrono = "0.4"
+semver = "1.0"
