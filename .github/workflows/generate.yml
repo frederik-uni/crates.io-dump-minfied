@@ -96,12 +96,12 @@ jobs:
         if: env.greater == 1
         run: |
           # Get all releases and count them
-          releases_json=$(gh release list --json name,createdAt)
+          releases_json=$(gh release list --json tagName,createdAt)
           release_count=$(echo "$releases_json" | jq 'length')
 
           # Only delete if there are 2 or more releases
           if [ $release_count -ge 2 ]; then
-            oldest_release=$(echo "$releases_json" | jq -r 'sort_by(.createdAt) | first(.[]?) | .name')
+            oldest_release=$(echo "$releases_json" | jq -r 'sort_by(.createdAt) | first(.[]?) | .tagName')
             echo "Deleting oldest release: $oldest_release"
             gh release delete "$oldest_release" --yes
           else
