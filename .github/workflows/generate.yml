@@ -57,22 +57,18 @@ jobs:
             tar -cf - categories keywords dump | zstd -o data.tar.zst
           fi
 
-          # Check if artifact exists when release is needed
-          if [ $exit_code -eq 0 ] && [ ! -f ./data.tar.zst ]; then
-            echo "Error: data.tar.zst artifact not found!"
-            exit 1
+          if [ $exit_code -eq 0 ]; then
+            echo "greater=1" >> $GITHUB_ENV
+            if [ ! -f ./data.tar.zst ]; then
+              echo "Warning: data.tar.zst artifact not found"
+              exit 1
+            fi
           elif [ $exit_code -eq 20 ] || [ $exit_code -eq 21 ]; then
             echo "Binary exited intentionally with code $exit_code. Skipping release."
             echo "greater=0" >> $GITHUB_ENV
           else
             echo "Unexpected failure with exit code $exit_code"
             exit $exit_code
-          fi
-
-          if [ $exit_code -eq 0 ]; then
-            echo "greater=1" >> $GITHUB_ENV
-          else
-            echo "greater=0" >> $GITHUB_ENV
           fi
 
       - name: Set release title
