@@ -104,7 +104,6 @@ jobs:
             oldest_release=$(echo "$releases_json" | jq -r 'sort_by(.createdAt) | first(.[]?) | .tagName')
             echo "Deleting oldest release: $oldest_release"
             gh release delete "$oldest_release" --yes
-            gh tag delete "$oldest_release"
           else
             echo "Not enough releases to delete (current: $release_count)"
           fi
