@@ -3,6 +3,7 @@ name: Build and Release Cargo Project
 on:
   schedule:
     - cron: "0 */3 * * *"
+  workflow_dispatch:       
 
 jobs:
   build_and_release:
