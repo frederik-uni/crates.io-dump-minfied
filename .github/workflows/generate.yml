@@ -101,6 +101,7 @@ jobs:
 
           # Only delete if there are 2 or more releases
           if [ $release_count -ge 2 ]; then
+            echo $releases_json
             oldest_release=$(echo "$releases_json" | jq -r 'min_by(.createdAt) | .tagName')
             echo "Deleting oldest release: $oldest_release"
             gh release delete "$oldest_release" --yes
