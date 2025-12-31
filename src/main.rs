@@ -95,29 +95,28 @@ fn process() -> db_dump::Result<Vec<Crate>> {
         })
         .dependencies(|row| dependencies.push(row))
         .versions(|row| {
-            if let Some(v) = &row.rust_version {
-                match v.pre.is_empty() {
-                    true => {
-                        stable_versions
-                            .entry(row.crate_id)
-                            .and_modify(|old_version| {
-                                if *old_version < *v {
-                                    *old_version = v.clone();
-                                }
-                            })
-                            .or_insert(v.clone());
-                    }
-                    false => {
-                        versions
-                            .entry(row.crate_id)
-                            .and_modify(|old_version| {
-                                if *old_version < *v {
-                                    *old_version = v.clone();
-                                }
-                            })
-                            .or_insert(v.clone());
-                    }
-                };
+            let v = &row.num;
+            match v.pre.is_empty() {
+                true => {
+                    stable_versions
+                        .entry(row.crate_id)
+                        .and_modify(|old_version| {
+                            if *old_version < *v {
+                                *old_version = v.clone();
+                            }
+                        })
+                        .or_insert(v.clone());
+                }
+                false => {
+                    versions
+                        .entry(row.crate_id)
+                        .and_modify(|old_version| {
+                            if *old_version < *v {
+                                *old_version = v.clone();
+                            }
+                        })
+                        .or_insert(v.clone());
+                }
             };
             if row.has_lib {
                 libs.insert(row.crate_id);
