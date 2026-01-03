@@ -34,7 +34,7 @@ async fn main() {
 }
 
 async fn download_if_updated(last: &str) -> String {
-    let url = format!("https://static.crates.io/db-dump.tar.gz#{last}");
+    let url = &format!("https://static.crates.io/db-dump.tar.gz#{last}");
     let client = Client::new();
 
     let local_last_modified: Option<DateTime<Utc>> = DateTime::parse_from_rfc2822(last.trim())
